@@ -1,0 +1,26 @@
+# ── Nix / devenv ─────────────────────────────────────────────────────────────
+.devenv/
+.direnv/
+.devenv.flake.nix
+
+# ── Environment ───────────────────────────────────────────────────────────────
+.env
+
+# ── PHP / Composer ────────────────────────────────────────────────────────────
+vendor/
+
+# ── Runtime / uploads ─────────────────────────────────────────────────────────
+public/uploads/*
+!public/uploads/.gitkeep
+
+# ── Scratch directory — class work and experiments, never pushed ──────────────
+scratch/*
+!scratch/.gitkeep
+
+# ── OS / editor noise ─────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo

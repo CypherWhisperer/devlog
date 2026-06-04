@@ -1,0 +1,18 @@
+{
+    "name": "cypherwhisperer/devlog",
+    "description": "A multi-user developer journal application built on a LAMP stack.",
+    "type": "project",
+    "require": {
+        "php": "^8.3",
+        "vlucas/phpdotenv": "^5.6",
+        "cebe/markdown": "^1.2"
+    },
+    "autoload": {
+        "psr-4": {
+            "App\\": "src/"
+        }
+    },
+    "config": {
+        "optimize-autoloader": true
+    }
+}
