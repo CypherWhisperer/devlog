@@ -121,6 +121,7 @@
   };
 
   # ── Scripts ───────────────────────────────────────────────────────────────────
+
   scripts.dl-status.exec = ''
     echo "=== DevLog Service Status ==="
     echo ""
@@ -132,7 +133,7 @@
     echo ""
     echo "[ MariaDB ]"
     ${pkgs.mariadb}/bin/mysqladmin \
-      --socket=${config.services.mysql.socketPath} \
+      --socket=${config.devenv.root}/.devenv/state/mysql/mysql.sock \
       --user=devlog \
       --password=devlog \
       status 2>/dev/null \
@@ -148,7 +149,7 @@
 
   scripts.dl-db.exec = ''
     ${pkgs.mariadb}/bin/mysql \
-      --socket=${config.services.mysql.socketPath} \
+      --socket=${config.devenv.root}/.devenv/state/mysql/mysql.sock \
       --user=devlog \
       --password=devlog \
       devlog
@@ -167,7 +168,7 @@
   scripts.dl-migrate.exec = ''
     echo "Importing schema.sql into devlog database..."
     ${pkgs.mariadb}/bin/mysql \
-      --socket=${config.services.mysql.socketPath} \
+      --socket=${config.devenv.root}/.devenv/state/mysql/mysql.sock \
       --user=devlog \
       --password=devlog \
       devlog < ${config.devenv.root}/database/schema.sql \
