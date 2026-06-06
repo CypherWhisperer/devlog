@@ -25,7 +25,7 @@
 {
   # ── PHP ───────────────────────────────────────────────────────────────────────
   languages.php = {
-    enable  = true;
+    enable = true;
     version = "8.3";
 
     # fileinfo added over nixamp: required by Milestone 5 (MIME validation on
@@ -57,9 +57,9 @@
     #   config.languages.php.fpm.pools.web.socket
     fpm.pools.web = {
       settings = {
-        "pm"                   = "dynamic";
-        "pm.max_children"      = 10;
-        "pm.start_servers"     = 2;
+        "pm" = "dynamic";
+        "pm.max_children" = 10;
+        "pm.start_servers" = 2;
         "pm.min_spare_servers" = 1;
         "pm.max_spare_servers" = 5;
       };
@@ -106,12 +106,12 @@
   # initialDatabases and ensureUsers run only on first `devenv up` (when the
   # data directory does not yet exist). Re-running devenv up does not reset data.
   services.mysql = {
-    enable   = true;
-    package  = pkgs.mariadb;
+    enable = true;
+    package = pkgs.mariadb;
     initialDatabases = [ { name = "devlog"; } ];
     ensureUsers = [
       {
-        name     = "devlog";
+        name = "devlog";
         password = "devlog";
         ensurePermissions = {
           "devlog.*" = "ALL PRIVILEGES";
@@ -121,7 +121,6 @@
   };
 
   # ── Scripts ───────────────────────────────────────────────────────────────────
-
   scripts.dl-status.exec = ''
     echo "=== DevLog Service Status ==="
     echo ""
@@ -133,9 +132,9 @@
     echo ""
     echo "[ MariaDB ]"
     ${pkgs.mariadb}/bin/mysqladmin \
+      --socket=${config.services.mysql.socketPath} \
       --user=devlog \
       --password=devlog \
-      --host=127.0.0.1 \
       status 2>/dev/null \
       && echo "  Reachable:   YES" \
       || echo "  Reachable:   NO  (run 'devenv up')"
@@ -149,9 +148,9 @@
 
   scripts.dl-db.exec = ''
     ${pkgs.mariadb}/bin/mysql \
+      --socket=${config.services.mysql.socketPath} \
       --user=devlog \
       --password=devlog \
-      --host=127.0.0.1 \
       devlog
   '';
 
@@ -168,9 +167,9 @@
   scripts.dl-migrate.exec = ''
     echo "Importing schema.sql into devlog database..."
     ${pkgs.mariadb}/bin/mysql \
+      --socket=${config.services.mysql.socketPath} \
       --user=devlog \
       --password=devlog \
-      --host=127.0.0.1 \
       devlog < ${config.devenv.root}/database/schema.sql \
       && echo "Schema imported successfully." \
       || echo "Import failed — is 'devenv up' running?"
