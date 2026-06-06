@@ -1,7 +1,7 @@
 # ADR_001_2026_06_04: Nix Flake + devenv as the Development Environment
 
 **Date:** 2026-06-04
-**Status:** Accepted
+**Status:** Accepted — partially superseded by [ADR_003](./ADR_003_2026_06_05_revert_to_devenv_yaml.md) (flake vs devenv.yaml choice reversed; devenv-over-Docker reasoning unchanged)
 **Deciders:** CypherWhisperer
 
 ---

@@ -2,55 +2,57 @@
 
 ## Runtime: PHP 8.3
 
-PHP is the course requirement. 8.3 is the current stable release and the version devenv resolves via `languages.php.version = "8.3"`. Features used from modern PHP: backed enums (8.1), `readonly` properties where applicable, named arguments, `str_starts_with`.
+PHP is the course requirement. 8.3 is the current (_as of writting this 2026-06-06_) stable release and the version devenv resolves via `languages.php.version = "8.3"`. Features used from modern PHP: backed enums (8.1), `readonly` properties where applicable, named arguments, `str_starts_with`.
 
 ## Web Server: Caddy + PHP-FPM
 
 The course context is LAMP, where Apache is traditional. Caddy replaces Apache for the following reasons:
 
-- Zero configuration for HTTPS (irrelevant locally, relevant if deployed)
-- Native `php_fastcgi` directive — no module loading, no `.conf` files beyond the virtualHost block
+- Zero configuration for HTTPS (_irrelevant locally, relevant if deployed_)
+- Native `php_fastcgi` directive — _no module loading, no `.conf` files beyond the virtualHost block_
 - Nix packaging is cleaner than Apache's module system
 - `try_files` rewrite to `index.php` is a single line vs Apache's multi-line `mod_rewrite` block
 
-PHP-FPM manages a pool of PHP worker processes. Caddy forwards `.php` requests via FastCGI to the pool's Unix socket. The socket path is resolved at Nix evaluation time — no hardcoded paths.
+PHP-FPM manages a pool of PHP worker processes. Caddy forwards `.php` requests via FastCGI to the pool's Unix socket. The socket path is resolved at Nix evaluation time — _no hardcoded paths._
 
 Apache remains relevant: the `public/.htaccess` file is included for environments where Apache is the server, and the course covers Apache configuration. Caddy is the devenv server; Apache is the taught concept.
 
 ## Database: MariaDB via PDO
 
-MariaDB is MySQL-compatible and is the default `services.mysql.package` in devenv's NixOS-based environment. All queries use PDO prepared statements — no raw string interpolation. PDO is configured with `ERRMODE_EXCEPTION` (throws on error) and `EMULATE_PREPARES = false` (real prepared statements, not client-side emulation).
+MariaDB is MySQL-compatible and is the default `services.mysql.package` in devenv's NixOS-based environment. All queries use PDO prepared statements — _no raw string interpolation._ PDO is configured with `ERRMODE_EXCEPTION` (_throws on error_) and `EMULATE_PREPARES = false` (_real prepared statements, not client-side emulation_).
 
 **Why not SQLite?** The course covers MySQL/MariaDB specifically. SQLite would remove the server-client architecture, the user/permission model, and the connection pool concepts that are part of the curriculum.
 
-## Package Management: Composer (Tier 3)
+## Package Management: Composer (_Tier 3_)
 
-Composer is PHP's dependency manager. It is scoped to this project (Tier 3 — devenv `packages` block) rather than installed globally via Home Manager. This keeps the tool co-located with the project that needs it. If PHP tooling grows across multiple projects, Composer should migrate to a Home Manager dev packages module.
+Composer is PHP's dependency manager. It is scoped to this project (_Tier 3 — devenv `packages` block_) rather than installed globally via Home Manager. This keeps the tool co-located with the project that needs it. If PHP tooling grows across multiple projects, Composer should migrate to a Home Manager dev packages module.
 
 **Dependencies:**
 
-| Package | Version | Purpose |
+|Package|Version|Purpose|
 |---|---|---|
-| `vlucas/phpdotenv` | ^5.6 | Load `.env` into `getenv()` / `$_ENV` |
-| `cebe/markdown` | ^1.2 | Markdown → HTML rendering for entry bodies |
+|`vlucas/phpdotenv`|^5.6|Load `.env` into `getenv()` / `$_ENV`|
+|`cebe/markdown`|^1.2|Markdown → HTML rendering for entry bodies|
 
-## Dev Environment: Nix Flake + devenv
+## Dev Environment: devenv + devenv.yaml
 
-The local development environment is defined entirely in Nix. `flake.nix` owns the input pins (nixpkgs, devenv). `devenv.nix` defines the services (Caddy, PHP-FPM, MariaDB, Adminer) and shell scripts.
+The local development environment is defined entirely in Nix via devenv. `devenv.yaml` declares the input pins (_nixpkgs, pre-commit-hooks_). `devenv.nix` defines the services (_Caddy, PHP-FPM, MariaDB, Adminer_) and shell scripts. `.envrc` uses `use devenv`, which devenv hooks into direnv automatically.
 
-**Why a flake rather than `devenv.yaml`?**
+**Why devenv.yaml rather than an explicit flake.nix?**
 
-`devenv.yaml` is a simplified interface over the same underlying flake that devenv uses internally. Writing `flake.nix` explicitly means:
+An explicit `flake.nix` was the original approach (_see [ADR_001](./project/decisions/ADR_001_2026_06_04_dev_environment.md), [ADR_003](./project/decisions/ADR_003_2026_06_05_revert_to_devenv_yaml.md)_). It was reverted after the flake integration layer — _system Nix → nix-direnv → `use flake` → `devenv.lib.mkShell`_ — produced version-sensitive failures during bootstrap that were rooted in host tooling mismatches outside the project's control.
 
-- Inputs are pinned to exact nixpkgs commits (reproducible across machines)
-- The environment can be composed into a future shared template
-- `use flake` in `.envrc` is the standard nix-direnv pattern, consistent with CypherOS conventions
+`devenv.yaml` is a simplified input declaration that devenv converts into an internal flake on the project's behalf. The functional outcome is identical: same services, same shell, same `devenv.nix`. The difference is that devenv manages the input pins internally via `devenv.lock` rather than the project owning a `flake.lock` directly. For a single-developer project on a known machine, this is the correct trade-off.
 
-`devenv.nix` remains the service definition file — the flake is purely the outer wrapper. This means the service configuration is portable and can be embedded into any flake that chooses to wrap it.
+The explicit `flake.nix` approach remains the long-term target — _it offers transparent input ownership and positions the environment for LAMP template extraction._ It is deferred until the skill to manage the integration chain confidently is in place. See ADR_003 for the full decision record.
 
-**Why devenv over a raw Nix flake `devShell`?**
+**Why devenv over a raw Nix flake devShell?**
 
-devenv provides declarative service management (`devenv up` starting Caddy, MariaDB, Adminer as supervised processes) that a raw `devShell` does not. Writing process supervision from scratch in Nix is non-trivial. devenv's `services.*` module handles it cleanly.
+devenv provides declarative service management (_`devenv up` starting Caddy, MariaDB, Adminer as supervised processes_) that a raw `devShell` does not. Writing process supervision from scratch in Nix is non-trivial. devenv's `services.*` module handles it cleanly.
+
+**Why devenv over Docker Compose?**
+
+Docker introduces a second dependency management system operating in parallel with Nix, with no benefit on a NixOS machine where devenv already solves the same problem. See ADR_001 for the full evaluation.
 
 ## Adminer
 
