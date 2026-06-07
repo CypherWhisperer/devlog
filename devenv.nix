@@ -108,7 +108,12 @@
   services.mysql = {
     enable = true;
     package = pkgs.mariadb;
-    initialDatabases = [ { name = "devlog"; } ];
+    initialDatabases = [
+      {
+        name = "devlog";
+      }
+    ];
+
     ensureUsers = [
       {
         name = "devlog";
@@ -132,9 +137,8 @@
     echo ""
     echo "[ MariaDB ]"
     ${pkgs.mariadb}/bin/mysqladmin \
-      --socket=${config.services.mysql.socketPath} \
-      --user=devlog \
-      --password=devlog \
+      --socket="$DEVENV_RUNTIME/mysql.sock" \
+      --user=root \
       status 2>/dev/null \
       && echo "  Reachable:   YES" \
       || echo "  Reachable:   NO  (run 'devenv up')"
@@ -148,7 +152,7 @@
 
   scripts.dl-db.exec = ''
     ${pkgs.mariadb}/bin/mysql \
-      --socket=${config.services.mysql.socketPath} \
+      --socket="$DEVENV_RUNTIME/mysql.sock" \
       --user=devlog \
       --password=devlog \
       devlog
@@ -167,7 +171,7 @@
   scripts.dl-migrate.exec = ''
     echo "Importing schema.sql into devlog database..."
     ${pkgs.mariadb}/bin/mysql \
-      --socket=${config.services.mysql.socketPath} \
+      --socket="$DEVENV_RUNTIME/mysql.sock" \
       --user=devlog \
       --password=devlog \
       devlog < ${config.devenv.root}/database/schema.sql \
