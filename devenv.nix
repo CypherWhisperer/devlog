@@ -126,6 +126,26 @@
   };
 
   # ── Scripts ───────────────────────────────────────────────────────────────────
+  scripts.dl-init.exec = ''
+      SOCK="$DEVENV_RUNTIME/mysql.sock"
+
+      echo "Waiting for MariaDB socket..."
+      for i in $(seq 1 30); do
+        [ -S "$SOCK" ] && break
+        sleep 1
+      done
+      [ ! -S "$SOCK" ] && echo "Timed out — is 'devenv up' running?" && exit 1
+
+      echo "Ensuring devlog user and database exist..."
+      ${pkgs.mariadb}/bin/mariadb --socket="$SOCK" --user=root <<SQL
+        CREATE DATABASE IF NOT EXISTS \`devlog\`;
+        CREATE USER IF NOT EXISTS 'devlog'@'localhost' IDENTIFIED BY 'devlog';
+        GRANT ALL PRIVILEGES ON \`devlog\`.* TO 'devlog'@'localhost';
+        FLUSH PRIVILEGES;
+    SQL
+      echo "Database and user ready."
+  '';
+
   scripts.dl-status.exec = ''
     echo "=== DevLog Service Status ==="
     echo ""
@@ -151,7 +171,7 @@
   '';
 
   scripts.dl-db.exec = ''
-    ${pkgs.mariadb}/bin/mysql \
+    ${pkgs.mariadb}/bin/mariadb \
       --socket="$DEVENV_RUNTIME/mysql.sock" \
       --user=devlog \
       --password=devlog \
@@ -170,7 +190,7 @@
 
   scripts.dl-migrate.exec = ''
     echo "Importing schema.sql into devlog database..."
-    ${pkgs.mariadb}/bin/mysql \
+    ${pkgs.mariadb}/bin/mariadb \
       --socket="$DEVENV_RUNTIME/mysql.sock" \
       --user=devlog \
       --password=devlog \
@@ -183,20 +203,53 @@
   enterShell = ''
     mkdir -p ${config.devenv.root}/public/uploads
     echo ""
-    echo "  ┌──────────────────────────────────────────────┐"
-    echo "  │   DevLog — LAMP Dev Environment              │"
-    echo "  │                                              │"
-    echo "  │   devenv up         → start all services     │"
-    echo "  │   dl-status         → check service health   │"
-    echo "  │   dl-db             → MariaDB CLI            │"
-    echo "  │   dl-logs           → PHP-FPM error log      │"
-    echo "  │   dl-php-info       → PHP build info         │"
-    echo "  │   dl-migrate        → import schema.sql      │"
-    echo "  │                                              │"
-    echo "  │   Web:        http://localhost:8080          │"
-    echo "  │   Adminer:    http://localhost:8081          │"
-    echo "  │                                              │"
-    echo "  └──────────────────────────────────────────────┘"
+    echo "  ┌──────────────────────────────────────────────────┐"
+    echo "  │   DevLog — LAMP Dev Environment                  │"
+    echo "  │                                                  │"
+    echo "  │   devenv up         → start all services         │"
+    echo "  │   dl-init           → ensure DB user + database  │"
+    echo "  │   dl-status         → check service health       │"
+    echo "  │   dl-db             → MariaDB CLI                │"
+    echo "  │   dl-logs           → PHP-FPM error log          │"
+    echo "  │   dl-php-info       → PHP build info             │"
+    echo "  │   dl-migrate        → import schema.sql          │"
+    echo "  │                                                  │"
+    echo "  │   Web:        http://localhost:8080              │"
+    echo "  │   Adminer:    http://localhost:8081              │"
+    echo "  │                                                  │"
+    echo "  └──────────────────────────────────────────────────┘"
+    echo ""
+    echo "                    CHEAT SHEET:                                   "
+    echo " FIRST TIME (fresh clone or after rm -rf .devenv/state/mysql)      "
+    echo " ─────────────────────────────────────────────────────────────     "
+    echo " devenv up        → start services (new terminal / background)     "
+    echo " dl-init          → create user + database (safe to re-run)        "
+    echo " dl-migrate       → import schema.sql                              "
+    echo " dl-status        → confirm all green                              "
+    echo ""
+    echo ""
+    echo "                EVERY SUBSEQUENT SESSION                           "
+    echo " ─────────────────────────────────────────────────────────────     "
+    echo " devenv up        → start services                                 "
+    echo " dl-init          → ensure user/db exist (idempotent — always safe)"
+    echo " dl-status        → confirm all green                              "
+    echo " [work]                                                            "
+    echo ""
+    echo ""
+    echo "          SCHEMA CHANGED (you edited database/schema.sql)          "
+    echo " ─────────────────────────────────────────────────────────────     "
+    echo " ⚠ dl-migrate drops and recreates tables — you will lose data.     "
+    echo " Either: back up first with dl-dump (add this script when needed)  "
+    echo " Or:     write a targeted ALTER and run it via dl-db               "
+    echo " "
+    echo " "
+    echo "            NUCLEAR RESET (start completely fresh)                 "
+    echo " ─────────────────────────────────────────────────────────────     "
+    echo " devenv down (or Ctrl+C on devenv up)                              "
+    echo " rm -rf .devenv/state/mysql                                        "
+    echo " devenv up                                                         "
+    echo " dl-init                                                           "
+    echo " dl-migrate                                                        "
     echo ""
   '';
 }

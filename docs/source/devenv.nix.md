@@ -223,17 +223,21 @@ devenv-managed paths.
 remembering flags and paths, developers run named commands. Scripts also
 serve as living documentation of how the services are connected.
 
-| Script         | Purpose                                            |
-| -------------- | -------------------------------------------------- |
-| `dl-status`    | Health check for all three services                |
-| `dl-db`        | Interactive MariaDB CLI as the devlog user         |
-| `dl-logs`      | Tail PHP-FPM error log                             |
-| `dl-php-info`  | Dump PHP build info and loaded extensions          |
-| `dl-migrate`   | Import `database/schema.sql` into devlog database  |
+| Script        | Purpose                                                  |
+| ------------- | -------------------------------------------------------- |
+| `dl-init`     | Idempotent bootstrap — creates user + database if absent |
+| `dl-status`   | Health check for all three services                      |
+| `dl-db`       | Interactive MariaDB CLI as the devlog user               |
+| `dl-logs`     | Tail PHP-FPM error log                                   |
+| `dl-php-info` | Dump PHP build info and loaded extensions                |
+| `dl-migrate`  | Import `database/schema.sql` into devlog database        |
 
 > `dl-status` uses `--user=root` for the mysqladmin ping — root
 > authenticates via unix_socket (no password). The `devlog` user is
 > used for all application-level script access (`dl-db`, `dl-migrate`).
+
+
+> **Session convention:** run `dl-init` at the start of every session before any database work. It is fully idempotent and takes under a second if the user and database already exist. This compensates for `ensureUsers` silently failing on some nixpkgs configurations. See INC_2026_06_05_001.
 
 ---
 
@@ -287,6 +291,7 @@ enterShell = ''
 - `ensureUsers` only runs on first init. If the data directory already
   exists from a broken or incomplete previous run, wipe it with
   `rm -rf .devenv/state/mysql` and restart.
+	- **`ensureUsers` silently fails on some nixpkgs/MariaDB 11.x configurations,leaving no user created after first init. `dl-init` is the workaround run it at the start of every session. See INC_2026_06_05_001 and ADR_004.**
 - `display_errors = On` in `ini` is dev-only. There is no production
   configuration variant — this environment is not intended for deployment.
 - `dl-logs` tails the FPM log only. Caddy logs are not surfaced by a

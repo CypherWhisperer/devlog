@@ -69,3 +69,18 @@ expression. Rejected for the same reason — _the path itself is wrong regardles
 
 - Apply to nixamp immediately (_same scripts, same fix_)
 - All future devenv projects in this workspace adopt this convention from the start
+
+---
+## Amendment — 2026-06-07
+
+Post-fix testing revealed that `ensureUsers` silently fails on MariaDB
+11.x (the version now supplied by nixpkgs-unstable) even with the correct
+socket path. The `devlog` user is not created on first init.
+
+`dl-init` is added as an idempotent session-start script that creates the
+user and database via root unix_socket auth, bypassing `ensureUsers`
+entirely for the user-creation concern. `ensureUsers` is retained in
+`devenv.nix` as a best-effort declaration but is no longer load-bearing.
+
+The session convention (run `dl-init` after every `devenv up`) is the
+operational fix. See `docs/source/devenv.nix.md` for the cheat sheet.
